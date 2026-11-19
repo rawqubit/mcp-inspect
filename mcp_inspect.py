@@ -536,7 +536,7 @@ def render_report(report, records, total, limit, palette):
         )
     )
     lines.append(
-        "%d tool%s %s %s schema tokens %s re-sent on every request"
+        "%d tool%s %s %s schema tokens %s in every request"
         % (
             len(records),
             "" if len(records) == 1 else "s",
@@ -605,9 +605,8 @@ def render_report(report, records, total, limit, palette):
     if records:
         worst = records[0]
         lines.append(
-            "%s %s tokens to every call; worst offender %s at %s (%.1f%%)."
+            "%s tokens ride in every request; worst offender %s at %s (%.1f%%)."
             % (
-                palette.bold("Adds"),
                 format(total, ","),
                 palette.bold(worst["name"]),
                 format(worst["tokens"], ","),
@@ -615,9 +614,7 @@ def render_report(report, records, total, limit, palette):
             )
         )
     else:
-        lines.append(
-            "Adds 0 tokens to every call; this server advertises no tools."
-        )
+        lines.append("0 tokens; this server advertises no tools.")
     return "\n".join(lines) + "\n"
 
 

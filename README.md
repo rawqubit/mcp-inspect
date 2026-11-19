@@ -4,11 +4,32 @@ Your MCP tool list is a tax on every request. This tells you how much.
 
 `mcp-inspect` spawns an MCP server over stdio, does the `initialize` /
 `tools/list` handshake, and prices the tool definitions the server hands back.
-Every tool definition is a JSON Schema that the client sends to the model on
-every single call, not once at startup: the whole list is pasted into the
-request every time, and nothing caches it. That means a server exposing thirty
-tools is paid for on every request, in every conversation, whether or not the
-model ever calls one of them.
+Every tool definition is a JSON Schema that the client pastes into the request
+on every call, not once at startup. A server exposing thirty tools is therefore
+paid for on every request, in every conversation, whether or not the model ever
+calls one of them.
+
+## The cache caveat, stated plainly
+
+Prompt caching takes the edge off this, and only when the cache is warm. On
+Anthropic the cached prefix is `tools`, then `system`, then `messages`, so the
+tool list is cached and a hit costs a fraction of a fresh read. OpenAI caches
+the prompt prefix automatically above about 1,000 tokens. Anyone who tells you
+the tool list is free has half a point, and here is the other half:
+
+- The prefix must be **byte-identical**. Change one tool, one word of the system
+  prompt, or the first user turn, and the whole prefix is re-read at full price.
+- Entries **expire**. Anthropic's default lifetime is five minutes, refreshed on
+  use; a slow batch job or a quiet queue misses on every call.
+- Requests routed to a **different machine or region** miss.
+- An agent that **edits its own tool list** at runtime invalidates the prefix it
+  just built.
+
+So the schema cost is a per-request cost that caching can discount and cannot
+remove. The way to make it disappear is to send fewer, shorter tools: that is
+the only version of this that does not depend on a hit rate. This tool prices
+what goes in the request; whether you pay full price for it on a given call is
+a caching question your gateway can answer.
 
 ## Install
 
@@ -50,7 +71,7 @@ Real output, from the fixture server in `tests/fixture_server.py`:
 
 ```
 mcp-inspect 0.1.0 | fixture-server | protocol 2024-11-05
-6 tools | 2,091 schema tokens | re-sent on every request
+6 tools | 2,091 schema tokens | in every request
 
  TOKENS   SHARE  TOOL                                                      FLAGS
   1,632   78.0%  bloated_report_generator                                  VERBOSE-DESC HUGE-SCHEMA
@@ -66,7 +87,7 @@ mcp-inspect 0.1.0 | fixture-server | protocol 2024-11-05
      57    2.7%  do                                                        NO-DESC NO-PARAM-DESC VAGUE-NAME
                      (no description)
 
-Adds 2,091 tokens to every call; worst offender bloated_report_generator at 1,632 (78.0%).
+2,091 tokens ride in every request; worst offender bloated_report_generator at 1,632 (78.0%).
 ```
 
 One tool in that list costs more than the other five together: 1,632 tokens
@@ -121,12 +142,13 @@ the safe direction, not as an exact vendor count.
 
 ## How to cut the bill
 
-- **Fewer tools per server.** Every schema is re-sent on every call, so the
-  cheapest tool is the one the model never had to be told about. Split a
+- **Fewer tools per server.** Every schema rides in every call, cached or not,
+  so the cheapest tool is the one the model never had to be told about. Split a
   40-tool server into task-scoped servers and connect only the one the task
   needs.
 - **Shorter descriptions.** A 900-character description on a tool called twice
-  a week costs as much as the code behind it on every call. Aim for one
+  a week costs as much as the code behind it on every call, and it is also the
+  part most likely to change and invalidate the cached prefix. Aim for one
   sentence that says what the tool does and when to use it.
 - **Split by task, not by vendor.** One server per workflow (`billing`,
   `search`, `deploy`) keeps each connected session's list small and makes the
@@ -144,6 +166,8 @@ the safe direction, not as an exact vendor count.
   they are valid JSON Schema, nor that the server implements them.
 - Token counts are estimates from the estimator above, not exact counts from a
   model's tokenizer.
+- It does not report cache hit rate. It prices the request, not the bill; your
+  gateway and the provider's usage fields know whether a call was a hit.
 
 ## Tests
 

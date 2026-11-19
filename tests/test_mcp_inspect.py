@@ -131,5 +131,25 @@ class FixtureServerTests(unittest.TestCase):
         self.assertNotIn("\x1b[", coloured.stdout)
 
 
+    def test_readme_sample_matches_live_output(self):
+        """The sample block in the README must be real output, not written by hand."""
+        import re
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent.parent
+        live = subprocess.run(
+            [sys.executable, str(root / "mcp_inspect.py"), "python3 tests/fixture_server.py"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        ).stdout.strip()
+        readme = (root / "README.md").read_text(encoding="utf-8")
+        block = re.search(r"## Sample output.*?```\n(.*?)```", readme, re.S).group(1).strip()
+        self.assertEqual(block, live, "README sample has drifted from the CLI output")
+
+
 if __name__ == "__main__":
     unittest.main()
