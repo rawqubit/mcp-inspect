@@ -1,5 +1,7 @@
 # mcp-inspect
 
+[![CI](https://github.com/rawqubit/mcp-inspect/actions/workflows/ci.yml/badge.svg)](https://github.com/rawqubit/mcp-inspect/actions/workflows/ci.yml) [![license](https://img.shields.io/badge/license-MIT-56d3a6)](https://github.com/rawqubit/mcp-inspect/blob/main/LICENSE) [![python](https://img.shields.io/badge/python-3.9%2B-3776ab)](https://github.com/rawqubit/mcp-inspect)
+
 Your MCP tool list is a tax on every request. This tells you how much.
 
 `mcp-inspect` spawns an MCP server over stdio, does the `initialize` /
